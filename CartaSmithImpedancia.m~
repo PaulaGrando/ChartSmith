@@ -1,0 +1,351 @@
+clc;
+clear;
+close all;
+%%%%%%%%%%%%%%%%%%%%%%% ENTRADAS DE VALORES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+a= input('Entre com o valor real de zl -> a= ');
+b= input('Entre com o valor imaginário de zl -> b= ');
+zl= a+j*b; %impedância na carga
+disp(['zl=',num2str(zl),'ohm']); % printa na tele p valor de zl
+
+a0=input('Entre com o valor real de z0 -> a0= ');
+b0=input('Entre com o valor imaginário de zl -> b0= ');
+z0=a0+j*b0; %impedancia na linha
+disp(['z0=',num2str(z0),'ohm']); % printa na tele p valor de z0
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% CALCULOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Impedância Normalizada 
+imp_normal=zl/z0;
+disp(['Impedância Normalizada= ', num2str(imp_normal)]);
+
+%% Cálculo do Coeficiente de Reflexão
+coef_reflex=(zl-z0)/(zl+z0);
+    rho=abs(coef_reflex);
+    theta=angle(coef_reflex);
+    angulo=theta*(180/pi);
+disp(['Coef. Reflexão - Módulo= ', num2str(rho)]);
+disp(['Coef. Reflexão - Ângulo= ', num2str(angulo),'°']);
+
+%% VSWR imp_normal
+VSWR=(1+abs(coef_reflex))/(1-abs(coef_reflex));
+disp(['VSWR= ', num2str(VSWR)]);
+
+%% Valor de máximo
+disp(['Valor máximo= ', num2str(VSWR)]);
+
+%% Valor de mínimo 
+vswr_deslocado=VSWR*pi;
+val_min=(1+abs(vswr_deslocado))/(1-abs(vswr_deslocado));
+disp(['Valor mínimo= ', num2str(abs(val_min))]);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% DESENHO CARTA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CIRCULO REAL = 0 (Base da Carta)
+theta=linspace(-pi,pi,180); %Ângulo(Graus) -> gera 180 números de -pi a pi
+a=1; %Raio do círculo
+m=0; %centro do círculo
+n=0; %Centro do círculo
+Re=a*cos(theta) + m; %Parte Real
+Im=a*sin(theta) + n; %Parte Imaginária
+z=Re+j*Im; %Número complexo
+plot(z,'k') 
+axis('equal') 
+%axis('off') % Tira o fundo branco
+hold on
+
+plot([-1 1],[0 0], 'k'); % Adiciona o eixo x
+
+% CIRCULOS REFERENTES À PARTE REAL(m=1/r+1 n=1) 
+rvalues=[0.1:0.5:4]; % Tem que ser um vetor "infinito"
+avalues= [0.1:0.5:4];% Tem que ser um vetor "infinito"
+k= [1:360];
+phi=1:1:360;
+theta=(phi*pi/180);
+
+for r=rvalues
+    m(k)=r./(1+r);
+    n=0;
+    a(k)=1./(1+r);
+    Re(k)=a(k).*cos(theta) + m;
+    Im(k)=a(k).*sin(theta) + n;
+    z(k)=Re(k)+j.*Im(k);
+    plot(z(k),'k')
+    hold on
+    xpos=z2gamma(r);
+    num=num2str(r);
+    h=text(xpos, 0, num);
+    set (h,'VerticalAlignment','top','HorizontalAlignment','right');
+end
+                        
+% CIRCULOS REFERENTES À PARTE IMAGIN�?RIA(m=1 n=1/r+1)
+xvalues=[0.1:0.5:4]; % Tem que ser um vetor "infinito"
+for x=xvalues
+    imcirc(x);
+    imcirc(-x);
+    xpos=real(z2gamma(i*x));
+    ypos=imag(z2gamma(i*x));
+    h=text([xpos xpos], [ypos -ypos],[num2str(x); num2str(x);]);
+     set(h(1),'VerticalAlignment', 'bottom');
+     set(h(2),'VerticalAlignment', 'top');
+      if xpos==0
+          set(h, 'HorizontalAlignment', 'center');
+      elseif xpos<0
+          set (h, 'HorizontalAlignment', 'right');
+      end  
+end
+
+%%%%%%%%%%%%%%%%%%%%%%% ENCONTRA PARÂMETROS BASICOS %%%%%%%%%%%%%%%%%%%%%%
+%% Localiza a impedância %%
+
+%zl_1=cos(angulo) * rho;
+%zl_2=sin(angulo) * rho;
+
+if angulo>90
+    
+    if cos(angulo) * rho < 0 %for negativo permanece negativo
+        zl_1=cos(angulo) * rho;
+    else %se por positivo transforma em negativo
+        zl_1=-(cos(angulo) * rho);
+    end
+    if sin(angulo) * rho < 0 %se for negativo transforma em positivo
+        zl_2= -(sin(angulo) * rho);
+    else %se for positivo mantem
+        zl_2= sin(angulo) * rho;
+    end
+    
+else %angulo<90
+    
+    if cos(angulo) * rho < 0 %se for negativo tranforma em positivo
+        zl_1=-(cos(angulo) * rho);
+    else %se for positivo mantem positivo
+        zl_1=cos(angulo) * rho;
+    end
+    if sin(angulo) * rho < 0 %se for negativo transforma em positivo
+        zl_2= -(sin(angulo) * rho);
+    else %se for positivo mantem positivo
+        zl_2= sin(angulo) * rho;
+    end
+    
+end
+
+if angulo > -90
+    if cos(angulo) * rho < 0 %se for negativo transforma em positivo
+        zl_1=-(cos(angulo) * rho);
+    else % se ele for positivo mantem
+        zl_1=cos(angulo) * rho;
+    end
+    if sin(angulo) * rho < 0 %se for negativo mantem
+        zl_2= sin(angulo) * rho;
+    else % se for positivo transforma em negativo
+        zl_2= -(sin(angulo) * rho);
+    end
+else 
+    if cos(angulo) * rho < 0 % se for negativo mantem
+         zl_1=cos(angulo) * rho;
+    else % se for positivo transforma em negativo
+         zl_1=-(cos(angulo) * rho);
+    end
+    
+   if sin(angulo) * rho < 0 %se for negativo mantem
+       zl_2= sin(angulo) * rho;
+   else % se for positivo transforma em positivo
+       zl_2=-(sin(angulo) * rho);
+   end
+end
+
+plot(zl_1,zl_2, 'r*', 'linewidth', 1)
+text(zl_1+0.009,zl_2+0.009, 'zl')
+
+%% Traça o circulo
+theta = linspace(0,2*pi);
+x1 = rho*cos(theta) + 0;
+y1 = rho*sin(theta) + 0;
+plot(x1,y1, 'red', 'linewidth', 0.5)
+axis('equal')
+
+%% mostra o valor de máximo
+plot(rho,0, 'rx')
+text(rho,0.09, 'VSWR')
+
+%% Mostra o valor de mínimo
+plot(-1*rho,0, 'rx')
+text(-1*rho,0.09, 'min')
+
+%%%%%%%%%%%%%%%%%%%%%%%%% CASAMENTO DE IMPEDÂNCIA %%%%%%%%%%%%%%%%%%%%%%%%%
+
+n = input('Tipo de casamento: ');
+
+switch n
+    case 1
+%CASAMENTO STUB EM PARALELO E ABERTO
+% Achar admitância
+%yl_1=cos(angulo+pi) * rho;
+%yl_2=sin(angulo+pi) * rho;
+
+
+if angulo+pi>90
+    
+    if cos(angulo+pi) * rho < 0 %for negativo vira positivo
+        zl_1=-(cos(angulo+pi) * rho);
+    else %se por positivo mantem
+        zl_1=cos(angulo+pi) * rho;
+    end
+    if sin(angulo+pi) * rho < 0 %se for negativo mantem
+        zl_2= sin(angulo+pi) * rho;
+    else %se for positivo transforma em negativo
+        zl_2= -(sin(angulo+pi) * rho);
+    end
+    
+else %angulo<90
+    
+    if cos(angulo+pi) * rho < 0 %se for negativo mantem
+        zl_1=cos(angulo+pi) * rho;
+    else %se for positivo transforma
+        zl_1=-(cos(angulo+pi) * rho);
+    end
+    if sin(angulo+pi) * rho < 0 %se for negativo mantem
+        zl_2= sin(angulo+pi) * rho;
+    else %se for positivo transforma
+        zl_2= -(sin(angulo+pi) * rho);
+    end
+    
+end
+
+if angulo > -90
+    if cos(angulo+pi) * rho < 0 %se for negativo mantem
+        zl_1=cos(angulo+pi) * rho;
+    else % se ele for positivo transforma
+        zl_1=-(cos(angulo+pi) * rho);
+    end
+    if sin(angulo+pi) * rho < 0 %se for negativo transforma
+        zl_2= -(sin(angulo+pi) * rho);
+    else % se for positivo mantem
+        zl_2= sin(angulo+pi) * rho;
+    end
+else 
+    if cos(angulo+pi) * rho < 0 % se for negativo transforma em positivo
+         zl_1=-(cos(angulo+pi) * rho);
+    else % se for positivo mantem
+         zl_1=cos(angulo+pi) * rho;
+    end
+    if sin(angulo+pi) * rho < 0 %se for negativo mantem
+       zl_2= sin(angulo+pi) * rho;
+   else % se for positivo transforma em positivo
+       zl_2=-(sin(angulo+pi) * rho);
+   end
+end
+
+
+plot(yl_1,yl_2, 'r*', 'linewidth', 1)
+text(yl_1+0.009,yl_2+0.009, 'YL')
+
+% Traçar o circulo 1+-jb
+a_1=0.5; %Raio do círculo
+m_1=0.5; %centro do círculo
+n_1=0; %Centro do círculo
+
+theta2 = linspace(0,2*pi); %Ângulo(Graus) -> gera 180 números de -pi a pi
+circ_Re=a_1*cos(theta2) + m_1;
+circ_Im=a_1*sin(theta2) + n_1;
+circ_z=circ_Re+j*circ_Im;
+plot(circ_z, 'blue')
+axis('equal') 
+hold on
+
+% Achar intersecao dos circulos
+%eq_cir_imp=x^2+y^2-rho^2; centro(0,0) rho=raio=modulo coef de reflexão
+%eq_cir_1=(x+m_1)^2+(y+n_1)^2-(a_1^2); centro(0.5,0) raio=0.5
+
+x_inter=(rho)^2; %x da intersecao da circunferencia
+y1_inter=sqrt((-x_inter^2)+(rho^2)); %y1 da intersecao da circunferencia
+y2_inter= -1*(sqrt((-x_inter^2)+(rho^2))); %y2 da intersecao da circunferencia
+plot(x_inter,y1_inter, '*b');
+plot(x_inter,y2_inter, '*b');
+
+p1=x_inter+y1_inter*j;
+p2=x_inter+y2_inter*j;
+angulo_ponto1=angle(p1);
+angulo_ponto1_rad=mod(angulo_ponto1*(180/pi),360);
+angulo_ponto2=angle(p2);
+angulo_ponto2_rad=mod(angulo_ponto2*(180/pi),360);
+
+
+% Escala CODG
+angulo_admitancia=angulo+180; %calculo do angulo da admitancia
+
+if angulo_admitancia<=180 %se o angulo_admitancia ta na parte de cima do grafico
+    ajuste_angulo=180-angulo_admitancia;
+    tam=(ajuste_angulo*0.5)/360;
+
+    if angulo_ponto1_rad<=180 %se a intersecção esta na parte de cima do grafico
+        ajuste_angulo1=180-angulo_ponto1_rad;
+        tam1=(ajuste_angulo1*0.5)/360;
+        d1=tam1-tam;
+        else %se a intersecção esta na parte de baixo do grafico
+            ajuste_angulo_1=360-angulo_ponto1_rad+180;
+            tam_1=(ajuste_angulo_1*0.5)/360;
+            d1=tam_1-tam;
+    end
+    if angulo_ponto2_rad<=180 %se a intersecção está na parte de cima do grafico
+        ajuste_angulo2=180-angulo_ponto2_rad;
+        tam2=(ajuste_angulo2*0.5)/360;
+        d2=tam2-tam;
+        else %se a intersecção está na parte de baixo do grafico
+            ajuste_angulo_2=360-angulo_ponto2_rad+180;
+            tam_2=(ajuste_angulo_2*0.5)/360;
+            d2=tam_2-tam;
+    end
+
+else %se o angulo_admitancia ta na parte de baixo do grafico
+    ajuste_angulo_admitancia=360-angulo_admitancia+180;
+    tam_admitancia_1=(ajuste_angulo_admitancia*0.5)/360;
+    
+    if angulo_ponto1_rad<=180 %se a intersecção está na parte de cima do grafico
+        ajuste_angulo1=180-angulo_ponto1_rad;
+        tam1=(ajuste_angulo1*0.5)/360;
+        d1=tam1-tam_admitancia_1;
+        else %se a intersecção está na parte de baixo do grafico
+            ajuste_angulo_1=360-angulo_ponto1_rad+180;
+            tam_1=(ajuste_angulo_1*0.5)/360;
+            d1=tam_1-tam_admitancia_1;
+    end
+    if angulo_ponto2_rad<=180 %se a intersecção está na parte de cima do grafico
+        ajuste_angulo2=180-angulo_ponto2_rad;
+        tam2=(ajuste_angulo2*0.5)/360;
+        d2=tam2-tam_admitancia_1;
+        else %se a interseccao esta na parte de baixo do grafico
+        ajuste_angulo_2=360-angulo_ponto2_rad+180;
+        tam_2=(ajuste_angulo_2*0.5)/360;
+        d2=tam_2-tam_admitancia_1;
+    end
+end
+
+d1=mod(d1,0.5);
+d2=mod(d2,0.5);
+
+if d1<0
+    d1=d1+0.5;
+end
+
+if d2<0
+    d2=d2+0.5;
+end
+
+disp(['O tamanho "d" do stub podera ser:', num2str(d1)]);
+disp(['O tamanho "d" do stub podera ser:', num2str(d2)]);
+
+
+    case 2
+       %CASAMENTO STUB EM PARELELO E EM CURTO
+        
+    case 3
+        disp('Stub em Curto')
+    case 4
+        disp('positive one')
+    case 5
+        disp('positive one')
+    otherwise
+        disp('Nao encontrado esse tipo de casamento')
+end
+
+
+
